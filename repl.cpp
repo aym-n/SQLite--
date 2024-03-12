@@ -119,7 +119,7 @@ int main()
         case (PREPARE_SUCCESS):
             break;
         case (PREPARE_UNRECOGNIZED_STATEMENT):
-            cout << "Unrecognized keyword at start of" << input_buffer->buffer << endl;
+            cout << "Unrecognized keyword at start of " << input_buffer->buffer << endl;
             continue;
         }
 
