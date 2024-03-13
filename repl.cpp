@@ -38,13 +38,21 @@ public:
         buffer_length = 0;
     }
 };
+string toLowercase(const string& str) {
+    string result = str;
+    for (char& c : result) {
+        c = tolower(c); // Convert character to lowercase
+    }
+    return result;
+}
 void print_prompt()
 {
     cout << " db > ";
 }
 void read_input(InputBuffer *input_buffer)
 {
-    getline(cin, input_buffer->buffer);
+    getline(cin,input_buffer->buffer);
+    input_buffer->buffer = toLowercase(input_buffer->buffer);
     input_buffer->buffer_length = input_buffer->buffer.length();
     if (!input_buffer->buffer.empty() && input_buffer->buffer[input_buffer->buffer_length - 1] == '\n')
     {
@@ -54,7 +62,7 @@ void read_input(InputBuffer *input_buffer)
 }
 MetaCommandResult do_meta_command(InputBuffer *input_buffer)
 {
-    if (input_buffer->buffer == ".exit" || input_buffer->buffer == ".EXIT")
+    if (input_buffer->buffer == ".exit")
     {
         exit(EXIT_SUCCESS);
     }
@@ -67,12 +75,12 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer)
 PrepareResult prepare_statement(InputBuffer *input_buffer,
                                 Statement *statement)
 {
-    if (input_buffer->buffer == "insert" || input_buffer->buffer == "INSERT")
+    if (input_buffer->buffer == "insert")
     {
         statement->type = STATEMENT_INSERT;
         return PREPARE_SUCCESS;
     }
-    if (input_buffer->buffer == "select" || input_buffer->buffer == "SELECT")
+    if (input_buffer->buffer == "select")
     {
         statement->type = STATEMENT_SELECT;
         return PREPARE_SUCCESS;
