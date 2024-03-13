@@ -54,7 +54,7 @@ void read_input(InputBuffer *input_buffer)
 }
 MetaCommandResult do_meta_command(InputBuffer *input_buffer)
 {
-    if (input_buffer->buffer == ".exit")
+    if (input_buffer->buffer == ".exit" || input_buffer->buffer == ".EXIT")
     {
         exit(EXIT_SUCCESS);
     }
@@ -67,12 +67,12 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer)
 PrepareResult prepare_statement(InputBuffer *input_buffer,
                                 Statement *statement)
 {
-    if (input_buffer->buffer == "insert")
+    if (input_buffer->buffer == "insert" || input_buffer->buffer == "INSERT")
     {
         statement->type = STATEMENT_INSERT;
         return PREPARE_SUCCESS;
     }
-    if (input_buffer->buffer == "select")
+    if (input_buffer->buffer == "select" || input_buffer->buffer == "SELECT")
     {
         statement->type = STATEMENT_SELECT;
         return PREPARE_SUCCESS;
