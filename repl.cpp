@@ -38,6 +38,13 @@ public:
         buffer_length = 0;
     }
 };
+string toLowercase(const string& str) {
+    string result = str;
+    for (char& c : result) {
+        c = tolower(c);
+    }
+    return result;
+}
 void print_prompt()
 {
     cout << " db > ";
@@ -45,6 +52,7 @@ void print_prompt()
 void read_input(InputBuffer *input_buffer)
 {
     getline(cin, input_buffer->buffer);
+    input_buffer->buffer = toLowercase(input_buffer->buffer);
     input_buffer->buffer_length = input_buffer->buffer.length();
     if (!input_buffer->buffer.empty() && input_buffer->buffer[input_buffer->buffer_length - 1] == '\n')
     {
