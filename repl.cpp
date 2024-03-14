@@ -1,7 +1,13 @@
 #include <iostream>
 #include <string>
+#include <sstream>
 
 using namespace std;
+typedef struct{
+    int id = -1;
+    string username;
+    string email;
+}Row;
 typedef enum
 {
     META_COMMAND_SUCCESS,
@@ -11,6 +17,7 @@ typedef enum
 typedef enum
 {
     PREPARE_SUCCESS,
+    PREPARE_SYNTAX_ERROR,
     PREPARE_UNRECOGNIZED_STATEMENT
 } PrepareResult;
 
@@ -23,6 +30,7 @@ typedef enum
 typedef struct
 {
     StatementType type;
+    Row row_to_insert;
 } Statement;
 
 class InputBuffer
@@ -48,6 +56,7 @@ string toLowercase(const string& str) {
 void print_prompt()
 {
     cout << " db > ";
+    
 }
 void read_input(InputBuffer *input_buffer)
 {
@@ -72,16 +81,25 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer)
     }
 }
 
-PrepareResult prepare_statement(InputBuffer *input_buffer,
-                                Statement *statement)
-{
-    if (input_buffer->buffer == "insert")
-    {
+PrepareResult prepare_statement(InputBuffer *input_buffer, Statement *statement) {
+    istringstream input_buffer_string(input_buffer->buffer);
+    string Buffer;
+    input_buffer_string >> Buffer;
+    if (Buffer == "insert") {
         statement->type = STATEMENT_INSERT;
-        return PREPARE_SUCCESS;
+         input_buffer_string >> statement->row_to_insert.id ;
+         input_buffer_string >> statement->row_to_insert.username ;
+         input_buffer_string >> statement->row_to_insert.email;
+        // Extract values from the rest of the string(tricky part che ye)
+        if(statement->row_to_insert.id == -1 || statement->row_to_insert.email.empty() || statement->row_to_insert.username.empty()){
+            return PREPARE_SYNTAX_ERROR;
+        }
+        else {
+            return PREPARE_SUCCESS;
+        }
     }
-    if (input_buffer->buffer == "select")
-    {
+
+    if (Buffer == "select") {
         statement->type = STATEMENT_SELECT;
         return PREPARE_SUCCESS;
     }
@@ -89,11 +107,14 @@ PrepareResult prepare_statement(InputBuffer *input_buffer,
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
+
 void execute_statement(Statement *statement)
 {
+    
     switch (statement->type)
     {
     case (STATEMENT_INSERT):
+    
         cout << "This is where we would do an insert."<<endl;
         break;
     case (STATEMENT_SELECT):
@@ -126,6 +147,11 @@ int main()
         {
         case (PREPARE_SUCCESS):
             break;
+
+        case (PREPARE_SYNTAX_ERROR):
+	        printf("Syntax error. Could not parse statement.\n");
+    	    continue;
+
         case (PREPARE_UNRECOGNIZED_STATEMENT):
             cout << "Unrecognized keyword at start of " << input_buffer->buffer << endl;
             continue;
