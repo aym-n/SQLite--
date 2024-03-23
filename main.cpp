@@ -5,6 +5,7 @@ using namespace std;
 
 int main()
 {
+    Table *table = new_table();
     InputBuffer *input_buffer= new InputBuffer;
     while (true)
     {
@@ -36,9 +37,17 @@ int main()
             cout << "Unrecognized keyword at start of " << input_buffer->buffer << endl;
             continue;
         }
-
-        execute_statement(&statement);
-        cout << "Executed" << endl;
+        
+         switch (execute_statement(&statement, table))
+        {
+        case (EXECUTE_SUCCESS):
+            cout << "Executed" << endl;
+            break;
+        case (EXECUTE_TABLE_FULL):
+            cout << "Error: Table full." << endl;
+            break;
+        }
     }
+    
     return 0;
 }
