@@ -28,11 +28,16 @@ const uint32_t TABLE_MAX_PAGES = 100;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
-typedef struct {
+
+class Pager {
+public:
   FILE* file_descriptor;
   uint32_t file_length;
   void* pages[TABLE_MAX_PAGES];
-} Pager;
+  Pager(string db_file);
+
+  Pager(); // Replaces open_pager function 
+};
 
 typedef struct {
   uint32_t num_rows;
@@ -94,7 +99,6 @@ Table* db_open(string db_file);
 // Define macros for offsets within the Row struct
 void* get_page(Pager* pager, uint32_t page_num);
 void db_close(Table* table);
-Pager* pager_open(string db_file);
 void pager_flush(Pager* pager, uint32_t page_num, uint32_t size);
 
 #endif

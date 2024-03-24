@@ -55,32 +55,26 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table* table)
 
 Table* db_open(string db_file) {
     Table* table = new Table;
-    Pager* pager = pager_open(db_file);
+    Pager* pager = new Pager(db_file);
     table->pager = pager;
 
     uint32_t num_rows = pager->file_length / ROW_SIZE;
     table->num_rows = num_rows;
-    // for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-    //     table->pages[i] = nullptr;
-    // }
     return table;
 }
 
-Pager* pager_open(string db_file) {
-    FILE* file = fopen(db_file.c_str(), "a+"); // Create a new file if the file doesn't exist already
 
-    if (!file) {
+// Replaces the pager_open function
+Pager::Pager(string db_file){
+    FILE* file = fopen(db_file.c_str(), "a+"); // Create a new file if the file doesn't exist already
+    if(!file){
         cout << "Could not open file" << endl;
         exit(EXIT_FAILURE);
     }
-
     fseek(file, 0, SEEK_END);
     uint32_t file_length = ftell(file);
-    Pager* pager = new Pager;
-    pager->file_descriptor = file;
-    pager->file_length = file_length;
-
-    return pager;
+    this->file_descriptor = file;
+    this->file_length = file_length;
 }
 
 void close_input_buffer(InputBuffer* input_buffer) {
