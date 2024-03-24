@@ -28,12 +28,16 @@ const uint32_t TABLE_MAX_PAGES = 100;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
+typedef struct {
+  FILE* file_descriptor;
+  uint32_t file_length;
+  void* pages[TABLE_MAX_PAGES];
+} Pager;
 
 typedef struct {
   uint32_t num_rows;
-  void* pages[TABLE_MAX_PAGES]; //array of pointers
+  Pager* pager;
 } Table;
-
 
 typedef enum MetaCommandResult {
   META_COMMAND_SUCCESS,
@@ -77,7 +81,7 @@ public:
 string toLowercase(const string& str);
 void print_prompt();
 void read_input(InputBuffer* input_buffer);
-MetaCommandResult do_meta_command(InputBuffer *input_buffer);
+MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table* table);
 PrepareResult prepare_statement(InputBuffer* input_buffer, Statement* statement);
 ExecuteResult execute_insert(Statement* statement, Table* table);
 ExecuteResult execute_select(Statement* statement, Table* table);
@@ -85,13 +89,13 @@ ExecuteResult execute_statement(Statement* statement, Table* table);
 void serialize_row(Row* source, void* destination);
 void deserialize_row(void* source, Row* destination);
 void* row_slot(Table* table, uint32_t row_num);
-Table* new_table();
-void free_table(Table* table);
-
+Table* db_open(string db_file);
 
 // Define macros for offsets within the Row struct
-
-
+void* get_page(Pager* pager, uint32_t page_num);
+void db_close(Table* table);
+Pager* pager_open(string db_file);
+void pager_flush(Pager* pager, uint32_t page_num, uint32_t size);
 
 #endif
 

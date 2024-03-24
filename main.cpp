@@ -3,9 +3,17 @@
 
 using namespace std;
 
-int main()
-{
-    Table *table = new_table();
+int main(int argc, char *argv[])
+{   
+    if (argc < 2)
+    {
+        cout << "Must supply a database filename." << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    string db_file = argv[1];
+    Table* table = db_open(db_file);
+
     InputBuffer *input_buffer= new InputBuffer;
     while (true)
     {
@@ -13,7 +21,7 @@ int main()
         read_input(input_buffer);
         if (input_buffer->buffer[0] == '.')
         {
-            switch (do_meta_command(input_buffer))
+            switch (do_meta_command(input_buffer, table))
             {
             case (META_COMMAND_SUCCESS):
                 continue;

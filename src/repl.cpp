@@ -3,6 +3,7 @@
 #include <sstream>
 #include <cstdint>
 #include <cstring>
+#include <cstdio>
 
 #include "repl.h"
 
@@ -38,10 +39,11 @@ void read_input(InputBuffer *input_buffer)
         input_buffer->buffer_length--;   // as i am removing the last character so length kam hogi
     }
 }
-MetaCommandResult do_meta_command(InputBuffer *input_buffer)
+MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table* table)
 {
     if (input_buffer->buffer == ".exit")
-    {
+    {   
+        db_close(table);
         exit(EXIT_SUCCESS);
     }
     else
@@ -49,39 +51,46 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer)
         return META_COMMAND_UNRECOGNIZED_COMMAND;
     }
 }
-Table* new_table() {
+
+
+Table* db_open(string db_file) {
     Table* table = new Table;
-    table->num_rows = 0;
-    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-        table->pages[i] = nullptr;
-    }
+    Pager* pager = pager_open(db_file);
+    table->pager = pager;
+
+    uint32_t num_rows = pager->file_length / ROW_SIZE;
+    table->num_rows = num_rows;
+    // for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
+    //     table->pages[i] = nullptr;
+    // }
     return table;
 }
 
-void free_table(Table* table) {
-    for (int i = 0; table->pages[i]; i++) {
-       if (table->pages[i]) {
-            delete[] static_cast<char*>(table->pages[i]);
-            table->pages[i] = nullptr;
-        }
+Pager* pager_open(string db_file) {
+    FILE* file = fopen(db_file.c_str(), "a+"); // Create a new file if the file doesn't exist already
+
+    if (!file) {
+        cout << "Could not open file" << endl;
+        exit(EXIT_FAILURE);
     }
-    delete table;
+
+    fseek(file, 0, SEEK_END);
+    uint32_t file_length = ftell(file);
+    Pager* pager = new Pager;
+    pager->file_descriptor = file;
+    pager->file_length = file_length;
+
+    return pager;
 }
+
 void close_input_buffer(InputBuffer* input_buffer) {
     delete input_buffer;
 }
 
 //till now no issue
-
-
-
 void *row_slot(Table * table, uint32_t row_num) {
     uint32_t page_num = row_num / ROWS_PER_PAGE;  //eg row_num = 1000,ROWS_PER_PAGE = 499, page_num = 2
-    void* page = table->pages[page_num]; //page_num = 2, table->pages[2] = 0x1234
-    if (!page) {
-        // Allocate memory only when we try to access page
-        page = table->pages[page_num] = new char[PAGE_SIZE]; //page_num = 2, table->pages[2] = 0x1234
-    }
+    void* page = get_page(table->pager, page_num); //page = 0x1234
     uint32_t row_offset = row_num % ROWS_PER_PAGE; 
     uint32_t byte_offset = row_offset * ROW_SIZE;
     return (char*)page + byte_offset; //page = 0x1234, byte_offset = 1000, return 0x1234 + 1000
@@ -173,4 +182,95 @@ void deserialize_row(void* source, Row* destination) {
     // Copy the email string
     char* src_email = (char*)source + EMAIL_OFFSET;
     destination->email = src_email;
+}
+
+void* get_page(Pager* pager, uint32_t page_num){
+    if(page_num > TABLE_MAX_PAGES){
+        cout << "Tried to fetch page number out of bounds. " << page_num << " > " << TABLE_MAX_PAGES << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    if(pager->pages[page_num] == nullptr){
+        // Cache miss. Allocate memory and load from file.
+        void* page = malloc(PAGE_SIZE);
+        uint32_t num_pages = pager->file_length / PAGE_SIZE;
+
+        // We might save a partial page at the end of the file
+        if(pager->file_length % PAGE_SIZE){
+            num_pages += 1;
+        }
+
+        if(page_num <= num_pages){
+            fseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+            size_t bytes_read = fread(page, PAGE_SIZE, 1, pager->file_descriptor);
+            if(bytes_read == -1){
+                cout << "Error reading file: " << errno << endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+        pager->pages[page_num] = page;
+    }
+
+    return pager->pages[page_num];
+}
+
+void db_close(Table* table){
+    Pager* pager = table->pager;
+    uint32_t num_full_pages = table->num_rows / ROWS_PER_PAGE;
+
+    for(uint32_t i = 0; i < num_full_pages; i++){
+        if(pager->pages[i] == nullptr){
+            continue;
+        }
+        pager_flush(pager, i, PAGE_SIZE);
+        free(pager->pages[i]);
+        pager->pages[i] = nullptr;
+    }
+
+    // There may be a partial page to write to the end of the file
+    uint32_t num_additional_rows = table->num_rows % ROWS_PER_PAGE;
+    if(num_additional_rows > 0){
+        uint32_t page_num = num_full_pages;
+        if(pager->pages[page_num] != nullptr){
+            pager_flush(pager, page_num, num_additional_rows * ROW_SIZE);
+            free(pager->pages[page_num]);
+            pager->pages[page_num] = nullptr;
+        }
+    }
+
+    int result = fclose(pager->file_descriptor);
+    if(result == -1){
+        cout << "Error closing db file." << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    for(uint32_t i = 0; i < TABLE_MAX_PAGES; i++){
+        void* page = pager->pages[i];
+        if(page){
+            free(page);
+            pager->pages[i] = nullptr;
+        }
+    }
+
+    delete pager;
+    delete table;
+}
+
+void pager_flush(Pager* pager, uint32_t page_num, uint32_t size){
+    if(pager->pages[page_num] == nullptr){
+        cout << "Tried to flush null page" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    uint32_t offset = fseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+    if(offset == -1){
+        cout << "Error seeking: " << errno << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    size_t bytes_written = fwrite(pager->pages[page_num], size, 1, pager->file_descriptor);
+    if(bytes_written == 0){
+        cout << "Error writing: " << errno << endl;
+        exit(EXIT_FAILURE);
+    }
 }

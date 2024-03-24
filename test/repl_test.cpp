@@ -12,7 +12,8 @@ TEST_CASE("Check do_meta_command", "[do_meta_command]") {
     InputBuffer* input = new InputBuffer();
     input->buffer = ".hello";
     input->buffer_length = input->buffer.length();
-    REQUIRE(do_meta_command(input) == META_COMMAND_UNRECOGNIZED_COMMAND);
+    Table* table = db_open("test.db");
+    REQUIRE(do_meta_command(input, table) == META_COMMAND_UNRECOGNIZED_COMMAND);
 }
 
 TEST_CASE("failing test_case", "[fail]"){
