@@ -66,7 +66,7 @@ Table* db_open(string db_file) {
 
 // Replaces the pager_open function
 Pager::Pager(string db_file){
-    FILE* file = fopen(db_file.c_str(), "a+"); // Create a new file if the file doesn't exist already
+    FILE* file = fopen(db_file.c_str(), "r+"); // Create a new file if the file doesn't exist already
     if(!file){
         cout << "Could not open file" << endl;
         exit(EXIT_FAILURE);
