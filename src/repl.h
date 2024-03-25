@@ -34,9 +34,10 @@ public:
   FILE* file_descriptor;
   uint32_t file_length;
   void* pages[TABLE_MAX_PAGES];
-  Pager(string db_file);
 
-  Pager(); // Replaces open_pager function 
+  Pager(string db_file); // Replaces open_pager function 
+  void flush(uint32_t page_num, uint32_t size);
+  void* get_page(uint32_t page_num);
 };
 
 typedef struct {
@@ -96,10 +97,7 @@ void deserialize_row(void* source, Row* destination);
 void* row_slot(Table* table, uint32_t row_num);
 Table* db_open(string db_file);
 
-// Define macros for offsets within the Row struct
-void* get_page(Pager* pager, uint32_t page_num);
 void db_close(Table* table);
-void pager_flush(Pager* pager, uint32_t page_num, uint32_t size);
 
 #endif
 

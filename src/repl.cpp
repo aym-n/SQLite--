@@ -84,7 +84,7 @@ void close_input_buffer(InputBuffer* input_buffer) {
 //till now no issue
 void *row_slot(Table * table, uint32_t row_num) {
     uint32_t page_num = row_num / ROWS_PER_PAGE;  //eg row_num = 1000,ROWS_PER_PAGE = 499, page_num = 2
-    void* page = get_page(table->pager, page_num); //page = 0x1234
+    void* page = table->pager->get_page(page_num); //page = 0x1234
     uint32_t row_offset = row_num % ROWS_PER_PAGE; 
     uint32_t byte_offset = row_offset * ROW_SIZE;
     return (char*)page + byte_offset; //page = 0x1234, byte_offset = 1000, return 0x1234 + 1000
@@ -178,34 +178,34 @@ void deserialize_row(void* source, Row* destination) {
     destination->email = src_email;
 }
 
-void* get_page(Pager* pager, uint32_t page_num){
+void* Pager::get_page(uint32_t page_num){
     if(page_num > TABLE_MAX_PAGES){
         cout << "Tried to fetch page number out of bounds. " << page_num << " > " << TABLE_MAX_PAGES << endl;
         exit(EXIT_FAILURE);
     }
 
-    if(pager->pages[page_num] == nullptr){
+    if(this->pages[page_num] == nullptr){
         // Cache miss. Allocate memory and load from file.
         void* page = malloc(PAGE_SIZE);
-        uint32_t num_pages = pager->file_length / PAGE_SIZE;
+        uint32_t num_pages = this->file_length / PAGE_SIZE;
 
         // We might save a partial page at the end of the file
-        if(pager->file_length % PAGE_SIZE){
+        if(this->file_length % PAGE_SIZE){
             num_pages += 1;
         }
 
         if(page_num <= num_pages){
-            fseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
-            size_t bytes_read = fread(page, PAGE_SIZE, 1, pager->file_descriptor);
+            fseek(this->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+            size_t bytes_read = fread(page, PAGE_SIZE, 1, this->file_descriptor);
             if(bytes_read == -1){
                 cout << "Error reading file: " << errno << endl;
                 exit(EXIT_FAILURE);
             }
         }
-        pager->pages[page_num] = page;
+        this->pages[page_num] = page;
     }
 
-    return pager->pages[page_num];
+    return this->pages[page_num];
 }
 
 void db_close(Table* table){
@@ -216,7 +216,7 @@ void db_close(Table* table){
         if(pager->pages[i] == nullptr){
             continue;
         }
-        pager_flush(pager, i, PAGE_SIZE);
+        pager->flush(i, PAGE_SIZE);
         free(pager->pages[i]);
         pager->pages[i] = nullptr;
     }
@@ -226,7 +226,7 @@ void db_close(Table* table){
     if(num_additional_rows > 0){
         uint32_t page_num = num_full_pages;
         if(pager->pages[page_num] != nullptr){
-            pager_flush(pager, page_num, num_additional_rows * ROW_SIZE);
+            pager->flush(page_num, num_additional_rows * ROW_SIZE);
             free(pager->pages[page_num]);
             pager->pages[page_num] = nullptr;
         }
@@ -250,19 +250,19 @@ void db_close(Table* table){
     delete table;
 }
 
-void pager_flush(Pager* pager, uint32_t page_num, uint32_t size){
-    if(pager->pages[page_num] == nullptr){
+void Pager::flush(uint32_t page_num, uint32_t size){
+    if(this->pages[page_num] == nullptr){
         cout << "Tried to flush null page" << endl;
         exit(EXIT_FAILURE);
     }
 
-    uint32_t offset = fseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
+    uint32_t offset = fseek(this->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
     if(offset == -1){
         cout << "Error seeking: " << errno << endl;
         exit(EXIT_FAILURE);
     }
 
-    size_t bytes_written = fwrite(pager->pages[page_num], size, 1, pager->file_descriptor);
+    size_t bytes_written = fwrite(this->pages[page_num], size, 1, this->file_descriptor);
     if(bytes_written == 0){
         cout << "Error writing: " << errno << endl;
         exit(EXIT_FAILURE);
