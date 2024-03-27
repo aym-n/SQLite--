@@ -16,6 +16,11 @@ TEST_CASE("Check do_meta_command", "[do_meta_command]") {
     REQUIRE(do_meta_command(input, table) == META_COMMAND_UNRECOGNIZED_COMMAND);
 }
 
-TEST_CASE("failing test_case", "[fail]"){
-    REQUIRE(1 == 2);
+TEST_CASE("check prepare_statement", "[prepare_statement]") {
+    InputBuffer* input = new InputBuffer();
+    input->buffer = "insert 1 user1 person1";
+    input->buffer_length = input->buffer.length();
+    Statement statement;
+    REQUIRE(prepare_statement(input, &statement) == PREPARE_SUCCESS);
 }
+
