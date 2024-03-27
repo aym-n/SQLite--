@@ -106,10 +106,11 @@ void close_input_buffer(InputBuffer *input_buffer)
 }
 
 // till now no issue
-void *row_slot(Table *table, uint32_t row_num)
-{
+void* cursor_value(Cursor* cursor) {
+    uint32_t row_num = cursor->row_num;
     uint32_t page_num = row_num / ROWS_PER_PAGE;   // eg row_num = 1000,ROWS_PER_PAGE = 499, page_num = 2
-    void *page = table->pager->get_page(page_num); // page = 0x1234
+    Pager* pager = cursor->table->pager; // Get the pager instance
+    void* page = pager->get_page(page_num);
     uint32_t row_offset = row_num % ROWS_PER_PAGE;
     uint32_t byte_offset = row_offset * ROW_SIZE;
     return (char *)page + byte_offset; // page = 0x1234, byte_offset = 1000, return 0x1234 + 1000
@@ -123,20 +124,23 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
     }
 
     Row *row_to_insert = &(statement->row_to_insert);
-
-    serialize_row(row_to_insert, row_slot(table, table->num_rows));
+    Cursor* cursor = table_end(table);
+    serialize_row(row_to_insert, cursor_value(cursor));
     table->num_rows += 1;
-
+    delete cursor;
     return EXECUTE_SUCCESS;
 }
 ExecuteResult execute_select(Statement *statement, Table *table)
 {
+    Cursor *cursor = table_start(table);
     Row row;
-    for (uint32_t i = 0; i < table->num_rows; i++)
+    while (!cursor->end_of_table)
     {
-        deserialize_row(row_slot(table, i), &row);
+        deserialize_row(cursor_value(cursor), &row);
         cout << '(' << row.id << " " << row.username << " " << row.email << ')' << endl;
+        cursor_advance(cursor);
     }
+    delete cursor;
     return EXECUTE_SUCCESS;
 }
 
@@ -317,5 +321,29 @@ void Pager::flush(uint32_t page_num, uint32_t size)
     {
         cout << "Error writing: " << errno << endl;
         exit(EXIT_FAILURE);
+    }
+}
+Cursor *table_start(Table *table)
+{
+    Cursor *cursor = new Cursor;
+    cursor->table = table;
+    cursor->row_num = 0;
+    cursor->end_of_table = (table->num_rows == 0);
+    return cursor;
+}
+Cursor *table_end(Table *table)
+{
+    Cursor *cursor = new Cursor;
+    cursor->table = table;
+    cursor->row_num = table->num_rows;
+    cursor->end_of_table = true;
+    return cursor;
+}
+void cursor_advance(Cursor *cursor)
+{
+    cursor->row_num += 1;
+    if (cursor->row_num >= cursor->table->num_rows)
+    {
+        cursor->end_of_table = true;
     }
 }
