@@ -37,13 +37,22 @@ public:
 
   Pager(string db_file); // Replaces open_pager function 
   void flush(uint32_t page_num, uint32_t size);
+  
   void* get_page(uint32_t page_num);
 };
-
 typedef struct {
   uint32_t num_rows;
   Pager* pager;
 } Table;
+
+class Cursor {
+public:
+  Table* table;
+  uint32_t row_num;
+  bool end_of_table;
+
+};
+
 
 typedef enum MetaCommandResult {
   META_COMMAND_SUCCESS,
@@ -94,7 +103,10 @@ ExecuteResult execute_select(Statement* statement, Table* table);
 ExecuteResult execute_statement(Statement* statement, Table* table);
 void serialize_row(Row* source, void* destination);
 void deserialize_row(void* source, Row* destination);
-void* row_slot(Table* table, uint32_t row_num);
+Cursor* table_start(Table* table);
+Cursor* table_end(Table* table);
+void * cursor_value(Cursor* cursor);
+void cursor_advance(Cursor* cursor);
 Table* db_open(string db_file);
 
 void db_close(Table* table);
