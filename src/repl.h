@@ -26,22 +26,22 @@ const uint32_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 const uint32_t PAGE_SIZE = 4096;
 const uint32_t TABLE_MAX_PAGES = 100;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
-const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
-const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
 
 class Pager {
 public:
   FILE* file_descriptor;
   uint32_t file_length;
+  uint32_t num_pages;
   void* pages[TABLE_MAX_PAGES];
 
   Pager(string db_file); // Replaces open_pager function 
-  void flush(uint32_t page_num, uint32_t size);
+  void flush(uint32_t page_num);
   
   void* get_page(uint32_t page_num);
 };
 typedef struct {
   uint32_t num_rows;
+  uint32_t root_page_num;
   Pager* pager;
 } Table;
 

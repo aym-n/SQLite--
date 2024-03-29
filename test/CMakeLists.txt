@@ -5,7 +5,7 @@ add_executable(
   repl_test.cpp
 )
 target_link_libraries(
-  replTests PRIVATE repl Catch2::Catch2WithMain
+  replTests PRIVATE libs Catch2::Catch2WithMain
 )
 
 include(CTest)
