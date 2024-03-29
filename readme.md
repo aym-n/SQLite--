@@ -11,11 +11,12 @@
    ```bash
    mkdir build
    ```
+   - Create the build folder in the main SQLite-- directory
 
 2. **Configure the project:**
    ```bash
    cd build
-   cmake -s .. -b .
+   cmake -S .. -B .
    ```
    - This generates the build configuration files for your system.
 
@@ -30,7 +31,7 @@
    ```bash
    ./build/main
    ```
-
+  - if this doesnt work, try running ./main eg.db in the build folder.
 ## Running Tests
 
 - **Run the test executable directly:**
