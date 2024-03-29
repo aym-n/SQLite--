@@ -98,6 +98,17 @@ Pager::Pager(string db_file)
     uint32_t file_length = ftell(file);
     this->file_descriptor = file;
     this->file_length = file_length;
+    this->num_pages = (file_length / PAGE_SIZE);
+    if(file_length % PAGE_SIZE != 0) {
+        printf("Db file is not a whole number of pages. Corrupt file.\n");
+        exit(EXIT_FAILURE);
+   }
+        
+
+    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++)
+    {
+        this->pages[i] = nullptr;
+    }
 }
 
 void close_input_buffer(InputBuffer *input_buffer)
@@ -108,17 +119,17 @@ void close_input_buffer(InputBuffer *input_buffer)
 // till now no issue
 void* cursor_value(Cursor* cursor) {
     uint32_t row_num = cursor->row_num;
-    uint32_t page_num = row_num / ROWS_PER_PAGE;   // eg row_num = 1000,ROWS_PER_PAGE = 499, page_num = 2
+    uint32_t page_num = row_num / 100;   // eg row_num = 1000,ROWS_PER_PAGE = 499, page_num = 2
     Pager* pager = cursor->table->pager; // Get the pager instance
     void* page = pager->get_page(page_num);
-    uint32_t row_offset = row_num % ROWS_PER_PAGE;
+    uint32_t row_offset = row_num % 100;
     uint32_t byte_offset = row_offset * ROW_SIZE;
     return (char *)page + byte_offset; // page = 0x1234, byte_offset = 1000, return 0x1234 + 1000
 }
 // checked
 ExecuteResult execute_insert(Statement *statement, Table *table)
 {
-    if (table->num_rows >= TABLE_MAX_ROWS)
+    if (table->num_rows >= 100)
     {
         return EXECUTE_TABLE_FULL;
     }
@@ -246,6 +257,11 @@ void *Pager::get_page(uint32_t page_num)
             }
         }
         this->pages[page_num] = page;
+
+        if (page_num >= this->num_pages)
+        {
+            this->num_pages = page_num + 1;
+        }
     }
 
     return this->pages[page_num];
@@ -254,30 +270,16 @@ void *Pager::get_page(uint32_t page_num)
 void db_close(Table *table)
 {
     Pager *pager = table->pager;
-    uint32_t num_full_pages = table->num_rows / ROWS_PER_PAGE;
 
-    for (uint32_t i = 0; i < num_full_pages; i++)
+    for (uint32_t i = 0; i < pager->num_pages; i++)
     {
         if (pager->pages[i] == nullptr)
         {
             continue;
         }
-        pager->flush(i, PAGE_SIZE);
+        pager->flush(i);
         free(pager->pages[i]);
         pager->pages[i] = nullptr;
-    }
-
-    // There may be a partial page to write to the end of the file
-    uint32_t num_additional_rows = table->num_rows % ROWS_PER_PAGE;
-    if (num_additional_rows > 0)
-    {
-        uint32_t page_num = num_full_pages;
-        if (pager->pages[page_num] != nullptr)
-        {
-            pager->flush(page_num, num_additional_rows * ROW_SIZE);
-            free(pager->pages[page_num]);
-            pager->pages[page_num] = nullptr;
-        }
     }
 
     int result = fclose(pager->file_descriptor);
@@ -301,7 +303,7 @@ void db_close(Table *table)
     delete table;
 }
 
-void Pager::flush(uint32_t page_num, uint32_t size)
+void Pager::flush(uint32_t page_num)
 {
     if (this->pages[page_num] == nullptr)
     {
@@ -316,7 +318,7 @@ void Pager::flush(uint32_t page_num, uint32_t size)
         exit(EXIT_FAILURE);
     }
 
-    size_t bytes_written = fwrite(this->pages[page_num], size, 1, this->file_descriptor);
+    size_t bytes_written = fwrite(this->pages[page_num], PAGE_SIZE, 1, this->file_descriptor);
     if (bytes_written == 0)
     {
         cout << "Error writing: " << errno << endl;
