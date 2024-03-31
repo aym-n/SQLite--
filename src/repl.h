@@ -111,5 +111,7 @@ Table* db_open(string db_file);
 
 void db_close(Table* table);
 
+void print_constants();
+
 #endif
 

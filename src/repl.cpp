@@ -47,6 +47,17 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table *table)
         db_close(table);
         exit(EXIT_SUCCESS);
     }
+    else if (input_buffer->buffer == ".constants")
+    {
+        print_constants();
+        return META_COMMAND_SUCCESS;
+    }
+    else if (input_buffer->buffer == ".btree")
+    {
+        cout << "Tree:\n";
+        print_leaf_node(table->pager->get_page(0));
+        return META_COMMAND_SUCCESS;
+    }
     else
     {
         return META_COMMAND_UNRECOGNIZED_COMMAND;
@@ -60,9 +71,10 @@ Table *db_open(string db_file)
     table->pager = pager;
     table->root_page_num = 0;
 
-    if(pager->num_pages == 0) {
+    if (pager->num_pages == 0)
+    {
         // New database file. Initialize page 0 as leaf node.
-        void* root_node = pager->get_page(0);
+        void *root_node = pager->get_page(0);
         initialize_leaf_node(root_node);
     }
     return table;
@@ -104,11 +116,11 @@ Pager::Pager(string db_file)
     this->file_descriptor = file;
     this->file_length = file_length;
     this->num_pages = (file_length / PAGE_SIZE);
-    if(file_length % PAGE_SIZE != 0) {
+    if (file_length % PAGE_SIZE != 0)
+    {
         printf("Db file is not a whole number of pages. Corrupt file.\n");
         exit(EXIT_FAILURE);
-   }
-        
+    }
 
     for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++)
     {
@@ -122,25 +134,27 @@ void close_input_buffer(InputBuffer *input_buffer)
 }
 
 // till now no issue
-void* cursor_value(Cursor* cursor) {
+void *cursor_value(Cursor *cursor)
+{
     uint32_t page_num = cursor->page_num;
-    void* page = cursor->table->pager->get_page(page_num);
+    void *page = cursor->table->pager->get_page(page_num);
     return leaf_node_value(page, cursor->cell_num);
 }
 // checked
 ExecuteResult execute_insert(Statement *statement, Table *table)
 {
-    void* node = table->pager->get_page(table->root_page_num);
+    void *node = table->pager->get_page(table->root_page_num);
     uint32_t num_cells = *leaf_node_num_cells(node);
-    if(num_cells >= LEAF_NODE_MAX_CELLS) {
+    if (num_cells >= LEAF_NODE_MAX_CELLS)
+    {
         return EXECUTE_TABLE_FULL;
     }
 
     Row *row_to_insert = &(statement->row_to_insert);
-    Cursor* cursor = table_end(table);
+    Cursor *cursor = table_end(table);
 
     leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
-    
+
     delete cursor;
     return EXECUTE_SUCCESS;
 }
@@ -344,7 +358,7 @@ Cursor *table_end(Table *table)
 {
     Cursor *cursor = new Cursor;
     cursor->table = table;
-    cursor->page_num = table->root_page_num;    
+    cursor->page_num = table->root_page_num;
     void *root_node = table->pager->get_page(table->root_page_num);
     uint32_t num_cells = *leaf_node_num_cells(root_node);
     cursor->cell_num = num_cells;
@@ -361,4 +375,14 @@ void cursor_advance(Cursor *cursor)
     {
         cursor->end_of_table = true;
     }
+}
+
+void print_constants()
+{
+    cout << "ROW_SIZE: " << ROW_SIZE << endl;
+    cout << "COMMON_NODE_HEADER_SIZE: " << COMMON_NODE_HEADER_SIZE << endl;
+    cout << "LEAF_NODE_HEADER_SIZE: " << LEAF_NODE_HEADER_SIZE << endl;
+    cout << "LEAF_NODE_CELL_SIZE: " << LEAF_NODE_CELL_SIZE << endl;
+    cout << "LEAF_NODE_SPACE_FOR_CELLS: " << LEAF_NODE_SPACE_FOR_CELLS << endl;
+    cout << "LEAF_NODE_MAX_CELLS: " << LEAF_NODE_MAX_CELLS << endl;
 }
