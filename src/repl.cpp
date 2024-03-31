@@ -58,9 +58,13 @@ Table *db_open(string db_file)
     Table *table = new Table;
     Pager *pager = new Pager(db_file);
     table->pager = pager;
+    table->root_page_num = 0;
 
-    uint32_t num_rows = pager->file_length / ROW_SIZE;
-    table->num_rows = num_rows;
+    if(pager->num_pages == 0) {
+        // New database file. Initialize page 0 as leaf node.
+        void* root_node = pager->get_page(0);
+        initialize_leaf_node(root_node);
+    }
     return table;
 }
 
@@ -126,15 +130,17 @@ void* cursor_value(Cursor* cursor) {
 // checked
 ExecuteResult execute_insert(Statement *statement, Table *table)
 {
-    if (table->num_rows >= 100)
-    {
+    void* node = table->pager->get_page(table->root_page_num);
+    uint32_t num_cells = *leaf_node_num_cells(node);
+    if(num_cells >= LEAF_NODE_MAX_CELLS) {
         return EXECUTE_TABLE_FULL;
     }
 
     Row *row_to_insert = &(statement->row_to_insert);
     Cursor* cursor = table_end(table);
-    serialize_row(row_to_insert, cursor_value(cursor));
-    table->num_rows += 1;
+
+    leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
+    
     delete cursor;
     return EXECUTE_SUCCESS;
 }
