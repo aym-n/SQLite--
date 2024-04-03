@@ -62,6 +62,7 @@ typedef enum MetaCommandResult {
 typedef enum ExecuteResult {
   EXECUTE_SUCCESS,
   EXECUTE_TABLE_FULL,
+  EXECUTE_DUPLICATE_KEY,
 } ExecuteResult;
 
 
@@ -104,10 +105,11 @@ ExecuteResult execute_statement(Statement* statement, Table* table);
 void serialize_row(Row* source, void* destination);
 void deserialize_row(void* source, Row* destination);
 Cursor* table_start(Table* table);
-Cursor* table_end(Table* table);
+Cursor* table_find(Table* table, uint32_t key);
 void * cursor_value(Cursor* cursor);
 void cursor_advance(Cursor* cursor);
 Table* db_open(string db_file);
+
 
 void db_close(Table* table);
 

@@ -151,7 +151,15 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
     }
 
     Row *row_to_insert = &(statement->row_to_insert);
-    Cursor *cursor = table_end(table);
+    uint32_t key_to_insert = row_to_insert->id;
+    Cursor *cursor = table_find(table, key_to_insert);
+
+    if(cursor->cell_num < num_cells){
+        uint32_t key_at_index = *leaf_node_key(node, cursor->cell_num);
+        if(key_at_index == key_to_insert){
+            return EXECUTE_DUPLICATE_KEY;
+        }
+    }
 
     leaf_node_insert(cursor, row_to_insert->id, row_to_insert);
 
@@ -354,17 +362,6 @@ Cursor *table_start(Table *table)
     cursor->end_of_table = (num_cells == 0);
     return cursor;
 }
-Cursor *table_end(Table *table)
-{
-    Cursor *cursor = new Cursor;
-    cursor->table = table;
-    cursor->page_num = table->root_page_num;
-    void *root_node = table->pager->get_page(table->root_page_num);
-    uint32_t num_cells = *leaf_node_num_cells(root_node);
-    cursor->cell_num = num_cells;
-    cursor->end_of_table = true;
-    return cursor;
-}
 void cursor_advance(Cursor *cursor)
 {
     uint32_t page_num = cursor->page_num;
@@ -374,6 +371,49 @@ void cursor_advance(Cursor *cursor)
     if (cursor->cell_num >= (*leaf_node_num_cells(node)))
     {
         cursor->end_of_table = true;
+    }
+}
+Cursor* leaf_node_find(Table *table, uint32_t page_num, uint32_t key){
+    void *node = table->pager->get_page(page_num);
+    uint32_t num_cells = *leaf_node_num_cells(node);
+
+    Cursor *cursor = new Cursor;
+    cursor->table = table;
+    cursor->page_num = page_num;
+
+    // Binary search
+    uint32_t min_index = 0;
+    uint32_t one_past_max_index = num_cells;
+    while(one_past_max_index != min_index){
+        uint32_t index = (min_index + one_past_max_index) / 2;
+        uint32_t key_at_index = *leaf_node_key(node, index);
+        if(key == key_at_index){
+            cursor->cell_num = index;
+            return cursor;
+        }
+        if(key < key_at_index){
+            one_past_max_index = index;
+        }else{
+            min_index = index + 1;
+        }
+    }
+    cursor->cell_num = min_index;
+    return cursor;
+}
+
+Cursor *table_find(Table *table, uint32_t key)
+{
+    uint32_t root_page_num = table->root_page_num;
+    void *root_node = table->pager->get_page(root_page_num);
+
+    if (get_node_type(root_node) == NODE_LEAF)
+    {
+        return leaf_node_find(table, root_page_num, key);
+    }
+    else
+    {
+        cout << "Need to implement searching an internal node" << endl;
+        exit(EXIT_FAILURE);
     }
 }
 
