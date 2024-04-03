@@ -9,7 +9,7 @@ using namespace std;
 typedef enum {
     NODE_INTERNAL,
     NODE_LEAF
-};
+}NodeType;
 
 /*
     Common Node Header Layout
@@ -57,6 +57,12 @@ void initialize_leaf_node(void* node);
 void leaf_node_insert(Cursor* cursor, uint32_t key, Row* value);
 
 void print_leaf_node(void* node);
+
+NodeType get_node_type(void* node);
+
+void set_node_type(void* node, NodeType type);
+
+
 
 #endif
 
