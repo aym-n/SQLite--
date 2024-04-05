@@ -38,6 +38,7 @@ public:
   void flush(uint32_t page_num);
   
   void* get_page(uint32_t page_num);
+  uint32_t get_unused_page_num();
 };
 typedef struct {
   uint32_t num_rows;

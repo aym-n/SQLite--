@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstring>
 #include <cstdio>
-
 #include "repl.h"
 #include "bTree.h"
 
@@ -55,7 +54,7 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table *table)
     else if (input_buffer->buffer == ".btree")
     {
         cout << "Tree:\n";
-        print_leaf_node(table->pager->get_page(0));
+        print_tree(table->pager, 0, 0);
         return META_COMMAND_SUCCESS;
     }
     else
@@ -76,6 +75,7 @@ Table *db_open(string db_file)
         // New database file. Initialize page 0 as leaf node.
         void *root_node = pager->get_page(0);
         initialize_leaf_node(root_node);
+        set_node_root(root_node, true);
     }
     return table;
 }
@@ -145,10 +145,6 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
 {
     void *node = table->pager->get_page(table->root_page_num);
     uint32_t num_cells = *leaf_node_num_cells(node);
-    if (num_cells >= LEAF_NODE_MAX_CELLS)
-    {
-        return EXECUTE_TABLE_FULL;
-    }
 
     Row *row_to_insert = &(statement->row_to_insert);
     uint32_t key_to_insert = row_to_insert->id;
@@ -425,4 +421,8 @@ void print_constants()
     cout << "LEAF_NODE_CELL_SIZE: " << LEAF_NODE_CELL_SIZE << endl;
     cout << "LEAF_NODE_SPACE_FOR_CELLS: " << LEAF_NODE_SPACE_FOR_CELLS << endl;
     cout << "LEAF_NODE_MAX_CELLS: " << LEAF_NODE_MAX_CELLS << endl;
+}
+
+uint32_t Pager::get_unused_page_num(){
+    return this->num_pages;
 }
