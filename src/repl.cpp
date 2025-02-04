@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdio>
 #include "repl.h"
+#include <strings.h>
 #include "bTree.h"
 
 using namespace std;
@@ -408,8 +409,7 @@ Cursor *table_find(Table *table, uint32_t key)
     }
     else
     {
-        cout << "Need to implement searching an internal node" << endl;
-        exit(EXIT_FAILURE);
+        return find_internal_node(table, root_page_num, key);
     }
 }
 
@@ -426,3 +426,31 @@ void print_constants()
 uint32_t Pager::get_unused_page_num(){
     return this->num_pages;
 }
+
+Cursor* find_internal_node(Table* table, uint32_t page_num, uint32_t key){
+	void* node = table->pager->get_page(page_num);
+	uint32_t num_keys = *internal_node_num_keys(node);
+
+	int left = 0, right = num_keys;
+	while(left != right){
+		int index = (right + left) / 2;
+		int current_key = *internal_node_key(node, index);
+
+		if(current_key >= key) 
+			right = index;
+		else left = index + 1;
+	}
+
+	uint32_t num_child = *internal_node_child(node, left);
+	void* child = table->pager->get_page(num_child);
+
+	switch(get_node_type(child)){
+	case NODE_LEAF:
+		return leaf_node_find(table, num_child, key);
+	case NODE_INTERNAL:
+		return find_internal_node(table, num_child, key);
+	}
+
+}
+
+
