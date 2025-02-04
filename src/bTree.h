@@ -32,7 +32,9 @@ const uint32_t COMMON_NODE_HEADER_SIZE = NODE_TYPE_SIZE + IS_ROOT_SIZE + PARENT_
 
 const uint32_t LEAF_NODE_NUM_CELLS_SIZE = sizeof(uint32_t);
 const uint32_t LEAF_NODE_NUM_CELLS_OFFSET = COMMON_NODE_HEADER_SIZE;
-const uint32_t LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE;
+const uint32_t LEAF_NODE_NEXT_LEAF_SIZE = sizeof(uint32_t);
+const uint32_t LEAF_NODE_NEXT_LEAF_OFFSET = LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE;
+const uint32_t LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
 
 /*
     Leaf Node Body Layout
@@ -61,6 +63,9 @@ const uint32_t INTERNAL_NODE_KEY_SIZE = sizeof(uint32_t);
 const uint32_t INTERNAL_NODE_CHILD_SIZE = sizeof(uint32_t);
 const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
 
+/* Keep this small for testing */
+const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
+
 uint32_t *leaf_node_num_cells(void *node);
 
 void *leaf_node_cell(void *node, uint32_t cell_num);
@@ -86,12 +91,18 @@ void create_new_root(Table *table, uint32_t right_child_page_num);
 void initialize_internal_node(void *node);
 uint32_t get_node_max_key(void *node);
 
+void update_internal_node_key(void *node, uint32_t old_key, uint32_t new_key);
 uint32_t *internal_node_child(void *node, uint32_t child_num);
 uint32_t *internal_node_num_keys(void *node);
 uint32_t *internal_node_key(void *node, uint32_t key_num);
 uint32_t *internal_node_right_child(void *node);
+uint32_t *leaf_node_next_leaf(void* node);
+
 bool is_node_root(void *node);
 
 void indent(uint32_t level);
 void print_tree(Pager *pager, uint32_t page_num, uint32_t indentation_level);
+
+void internal_node_insert(Table *table, uint32_t parent_page_num, uint32_t child_page_num);
+Cursor *internal_node_find(Table *table, uint32_t page_num, uint32_t key);
 #endif

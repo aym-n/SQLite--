@@ -330,14 +330,12 @@ void Pager::flush(uint32_t page_num)
 }
 Cursor *table_start(Table *table)
 {
-  Cursor *cursor = new Cursor;
-  cursor->table = table;
-  cursor->page_num = table->root_page_num;
-  cursor->cell_num = 0;
+  Cursor *cursor = table_find(table, 0);
 
-  void *root_node = table->pager->get_page(table->root_page_num);
-  uint32_t num_cells = *leaf_node_num_cells(root_node);
+  void *node = table->pager->get_page(cursor->page_num);
+  uint32_t num_cells = *leaf_node_num_cells(node);
   cursor->end_of_table = (num_cells == 0);
+
   return cursor;
 }
 void cursor_advance(Cursor *cursor)
@@ -347,7 +345,17 @@ void cursor_advance(Cursor *cursor)
 
   cursor->cell_num += 1;
   if (cursor->cell_num >= (*leaf_node_num_cells(node)))
-    cursor->end_of_table = true;
+  {
+    uint32_t next_page_num = *leaf_node_next_leaf(node);
+
+    if (next_page_num == 0)
+      cursor->end_of_table = true;
+    else
+    {
+      cursor->page_num = next_page_num;
+      cursor->cell_num = 0;
+    }
+  }
 }
 Cursor *leaf_node_find(Table *table, uint32_t page_num, uint32_t key)
 {
@@ -387,7 +395,7 @@ Cursor *table_find(Table *table, uint32_t key)
   if (get_node_type(root_node) == NODE_LEAF)
     return leaf_node_find(table, root_page_num, key);
   else
-    return find_internal_node(table, root_page_num, key);
+    return internal_node_find(table, root_page_num, key);
 }
 
 void print_constants()
@@ -402,31 +410,4 @@ void print_constants()
 
 uint32_t Pager::get_unused_page_num() { return this->num_pages; }
 
-Cursor *find_internal_node(Table *table, uint32_t page_num, uint32_t key)
-{
-  void *node = table->pager->get_page(page_num);
-  uint32_t num_keys = *internal_node_num_keys(node);
 
-  int left = 0, right = num_keys;
-  while (left != right)
-  {
-    int index = (right + left) / 2;
-    int current_key = *internal_node_key(node, index);
-
-    if (current_key >= key)
-      right = index;
-    else
-      left = index + 1;
-  }
-
-  uint32_t num_child = *internal_node_child(node, left);
-  void *child = table->pager->get_page(num_child);
-
-  switch (get_node_type(child))
-  {
-    case NODE_LEAF:
-      return leaf_node_find(table, num_child, key);
-    case NODE_INTERNAL:
-      return find_internal_node(table, num_child, key);
-  }
-}

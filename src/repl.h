@@ -117,6 +117,8 @@ Cursor *table_start(Table *table);
 Cursor *table_find(Table *table, uint32_t key);
 Cursor *find_internal_node(Table *table, uint32_t page_num, uint32_t key);
 
+Cursor *leaf_node_find(Table *table, uint32_t page_num, uint32_t key);
+
 void *cursor_value(Cursor *cursor);
 void cursor_advance(Cursor *cursor);
 Table *db_open(string db_file);
